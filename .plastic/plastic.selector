@@ -1,0 +1,4 @@
+repository "Echoes Beneath Coburg/Echoes Beneath Coburg@9071908129623@cloud"
+  path "/"
+    br "/main"
+    co "/main"
