@@ -916,11 +916,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: 2f935b64-6922-4388-ac8e-51abb6adf090
+  cloudProjectId: 707b748e-5f2e-4a80-944e-d81ea8a98c07
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: Echoes Beneath Coburg
-  organizationId: bgorobejko
+  projectName: Echoes Beneath Cöburg Pt.1
+  organizationId: alexrey199898
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
