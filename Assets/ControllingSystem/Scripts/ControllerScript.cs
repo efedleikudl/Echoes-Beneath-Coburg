@@ -122,21 +122,37 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    void HandleInteraction()
+
+void HandleInteraction()
+{
+    if (Input.GetKeyDown(interactKey))  // Standard ist KeyCode.E
     {
-        if (Input.GetKeyDown(interactKey))
+        Ray ray = new Ray(cameraHolder.position, cameraHolder.forward);
+        if (Physics.Raycast(ray, out RaycastHit hit, interactRange, interactLayer))
         {
-            Ray ray = new Ray(cameraHolder.position, cameraHolder.forward);
-            if (Physics.Raycast(ray, out RaycastHit hit, interactRange, interactLayer))
+            if (PlayerInventory.IsCarrying)
             {
-                IInteractable interactable = hit.collider.GetComponent<IInteractable>();
-                if (interactable != null)
+                PlaceTarget target = hit.collider.GetComponent<PlaceTarget>();
+                if (target != null)
                 {
-                    interactable.Interact();
+                    target.TryPlace();
+                    return;
+                }
+            }
+            else
+            {
+                CarryItem item = hit.collider.GetComponent<CarryItem>();
+                if (item != null)
+                {
+                    item.PickUp();
+                    return;
                 }
             }
         }
     }
+}
+
+
 
     void UpdateSprintUI()
     {
@@ -153,23 +169,9 @@ public interface IInteractable
     void Interact();
 }
 
-/*
-// Beispiel: Schlüsselobjekt
-public class KeyItem : MonoBehaviour, IInteractable
-{
-    public string keyID;
-
-    public void Interact()
-    {
-        Debug.Log("Schlüssel erhalten: " + keyID);
-        PlayerInventory.AddKey(keyID);
-        gameObject.SetActive(false);
-    }
-}
-*/
 
 // Beispiel: Tür, die Schlüssel benötigt
-public class LockableDoor : MonoBehaviour, IInteractable
+public class LockableDoor : MonoBehaviour
 {
     public string requiredKeyID;
     public Transform doorPivot;
@@ -178,21 +180,6 @@ public class LockableDoor : MonoBehaviour, IInteractable
 
     private bool isOpen = false;
 
-    public void Interact()
-    {
-        if (isOpen) return;
-
-        if (PlayerInventory.HasKey(requiredKeyID))
-        {
-            Debug.Log("Tür geöffnet mit Schlüssel: " + requiredKeyID);
-            StartCoroutine(OpenDoor());
-            isOpen = true;
-        }
-        else
-        {
-            Debug.Log("Schlüssel fehlt: " + requiredKeyID);
-        }
-    }
 
     private System.Collections.IEnumerator OpenDoor()
     {
@@ -209,6 +196,8 @@ public class LockableDoor : MonoBehaviour, IInteractable
     }
 }
 
+
+
 // Beispiel: Kerze ein-/ausschalten
 public class CandleToggle : MonoBehaviour, IInteractable
 {
@@ -221,18 +210,5 @@ public class CandleToggle : MonoBehaviour, IInteractable
     }
 }
 
-// Einfaches Inventar für Schlüssel (statisch, nicht persistent)
-public static class PlayerInventory
-{
-    private static System.Collections.Generic.HashSet<string> keys = new();
+    
 
-    public static void AddKey(string id)
-    {
-        keys.Add(id);
-    }
-
-    public static bool HasKey(string id)
-    {
-        return keys.Contains(id);
-    }
-}
