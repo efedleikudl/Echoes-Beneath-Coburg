@@ -29,6 +29,12 @@ public class SpiderAI : MonoBehaviour
         agent.angularSpeed = 240f;
         agent.acceleration = 8f;
 
+        // Ensure spider has proper tag
+        if (!CompareTag("Spider"))
+        {
+            tag = "Spider";
+        }
+
         // Start with a random patrol target
         SetNewPatrolTarget();
     }
@@ -67,6 +73,11 @@ public class SpiderAI : MonoBehaviour
                 agent.ResetPath();
                 animator.SetBool("isWalking", false);
                 animator.SetBool("isAttacking", true);
+
+                // Face the player when attacking
+                Vector3 lookDirection = player.position - transform.position;
+                lookDirection.y = 0;
+                transform.rotation = Quaternion.LookRotation(lookDirection);
             }
             else
             {
