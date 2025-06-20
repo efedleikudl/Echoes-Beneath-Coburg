@@ -857,7 +857,8 @@ PlayerSettings:
   metroDefaultTileSize: 1
   metroTileForegroundText: 2
   metroTileBackgroundColor: {r: 0.13333334, g: 0.17254902, b: 0.21568628, a: 0}
-  metroSplashScreenBackgroundColor: {r: 0.12941177, g: 0.17254902, b: 0.21568628, a: 1}
+  metroSplashScreenBackgroundColor: {r: 0.12941177, g: 0.17254902, b: 0.21568628,
+    a: 1}
   metroSplashScreenUseBackgroundColor: 0
   syncCapabilities: 0
   platformCapabilities: {}
@@ -919,7 +920,7 @@ PlayerSettings:
   cloudProjectId: 707b748e-5f2e-4a80-944e-d81ea8a98c07
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: Echoes Beneath Cöburg Pt.1
+  projectName: "Echoes Beneath C\xF6burg Pt.1"
   organizationId: alexrey199898
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
