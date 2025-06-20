@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Video;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -8,64 +8,58 @@ public class PlayerDeathScreener : MonoBehaviour
     [Header("Screamer Settings")]
     public VideoPlayer screamerVideoPlayer;
     public VideoClip screamerVideo;
-    public GameObject screamerCanvas; // UI Canvas with RawImage for video
-    public RawImage videoDisplay; // RawImage component to show video
-    public AudioSource screamerAudio;
-    public AudioClip screamerSound;
+    public GameObject screamerCanvas;          // UI Canvas with RawImage for video
+    public RawImage videoDisplay;            // RawImage that shows the RenderTexture
 
     [Header("Death Settings")]
-    public float videoDelay = 0.2f; // Small delay before screamer
-    public float deathDuration = 3f; // How long screamer plays
-    public string gameOverSceneName = "GameOver"; // Scene to load after death
-    public bool reloadCurrentScene = true; // If true, reloads current scene instead
+    public float videoDelay = 0.2f;    // Small delay before screamer starts
+    public float deathDuration = 3f;      // Fallback timer (optional)
+    public string gameOverSceneName = "GameOver";
+    public bool reloadCurrentScene = true;   // If true, restarts the current scene
 
     [Header("Player References")]
     public GameObject playerCamera;
-    public PlayerController playerController; // Your player controller script
-    public AudioListener playerAudioListener;
+    public PlayerController playerController;  // Your player controller script
 
     [Header("Visual Effects")]
-    public Image fadeToBlack; // Optional fade effect
+    public Image fadeToBlack;  // Optional fade overlay (UI Image)
     public float fadeSpeed = 2f;
 
-    [HideInInspector]
-    public bool isDead = false;
+    [HideInInspector] public bool isDead = false;
+
     private float deathTimer = 0f;
     private RenderTexture videoRenderTexture;
 
+    /* ───────────────────────────────────────────────────────────── */
+    /* INITIALISATION                                               */
+    /* ───────────────────────────────────────────────────────────── */
+
     void Start()
     {
-        // Create render texture for video
+        // Create RenderTexture for the video
         videoRenderTexture = new RenderTexture(1920, 1080, 24);
 
-        // Setup video player
+        // Ensure we have a VideoPlayer component
         if (screamerVideoPlayer == null)
-        {
             screamerVideoPlayer = gameObject.AddComponent<VideoPlayer>();
-        }
 
+        // Configure VideoPlayer
+        screamerVideoPlayer.clip = screamerVideo;
+        screamerVideoPlayer.targetTexture = videoRenderTexture;
+        screamerVideoPlayer.isLooping = false;                       // ⇦ no looping
+        screamerVideoPlayer.playOnAwake = false;
+        screamerVideoPlayer.audioOutputMode = VideoAudioOutputMode.Direct; // ⇦ use clip’s own audio
+        screamerVideoPlayer.Prepare();                                       // Start buffering
+
+        // Assign RenderTexture to the RawImage
+        if (videoDisplay != null)
+            videoDisplay.texture = videoRenderTexture;
+
+        // Hide screamer canvas at start
         if (screamerCanvas != null)
-        {
             screamerCanvas.SetActive(false);
-        }
 
-        // Configure video player
-        if (screamerVideoPlayer != null && screamerVideo != null)
-        {
-            screamerVideoPlayer.clip = screamerVideo;
-            screamerVideoPlayer.targetTexture = videoRenderTexture;
-            screamerVideoPlayer.isLooping = true;
-            screamerVideoPlayer.playOnAwake = false;
-            screamerVideoPlayer.Prepare();
-
-            // Set render texture to RawImage
-            if (videoDisplay != null)
-            {
-                videoDisplay.texture = videoRenderTexture;
-            }
-        }
-
-        // Setup fade overlay
+        // Fade overlay starts transparent & inactive
         if (fadeToBlack != null)
         {
             fadeToBlack.color = new Color(0, 0, 0, 0);
@@ -73,96 +67,64 @@ public class PlayerDeathScreener : MonoBehaviour
         }
     }
 
+    /* ───────────────────────────────────────────────────────────── */
+    /* TRIGGER HANDLING                                             */
+    /* ───────────────────────────────────────────────────────────── */
+
     void OnTriggerEnter(Collider other)
     {
-        // Check if spider touches player
         if (other.CompareTag("Spider") && !isDead)
         {
             SpiderAI spider = other.GetComponent<SpiderAI>();
             if (spider != null && spider.animator.GetBool("isAttacking"))
-            {
                 TriggerDeath();
-            }
         }
     }
 
     void OnTriggerStay(Collider other)
     {
-        // Also check during stay for continuous attack
         if (other.CompareTag("Spider") && !isDead)
         {
             SpiderAI spider = other.GetComponent<SpiderAI>();
             if (spider != null && spider.animator.GetBool("isAttacking"))
-            {
                 TriggerDeath();
-            }
         }
     }
+
+    /* ───────────────────────────────────────────────────────────── */
+    /* DEATH SEQUENCE                                               */
+    /* ───────────────────────────────────────────────────────────── */
 
     public void TriggerDeath()
     {
         if (isDead) return;
-
         isDead = true;
 
-        // Disable player controls immediately
-        if (playerController != null)
-        {
-            playerController.enabled = false;
-        }
-
-        // Freeze player movement
+        // Disable player controls & movement
+        if (playerController != null) playerController.enabled = false;
         CharacterController cc = GetComponent<CharacterController>();
-        if (cc != null)
-        {
-            cc.enabled = false;
-        }
+        if (cc != null) cc.enabled = false;
 
-        // Lock cursor
+        // Unlock & hide cursor
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = false;
 
-        // Start death sequence
-        Invoke("ShowScreamer", videoDelay);
+        // Start screamer after short delay
+        Invoke(nameof(ShowScreamer), videoDelay);
     }
 
     void ShowScreamer()
     {
-        // Show screamer canvas
-        if (screamerCanvas != null)
-        {
-            screamerCanvas.SetActive(true);
-        }
+        // Display canvas
+        if (screamerCanvas != null) screamerCanvas.SetActive(true);
 
-        // Play screamer video
-        if (screamerVideoPlayer != null)
-        {
-            screamerVideoPlayer.Play();
-        }
+        // Play video (includes its own audio)
+        if (screamerVideoPlayer != null) screamerVideoPlayer.Play();
 
-        // Play screamer audio
-        if (screamerAudio != null && screamerSound != null)
-        {
-            screamerAudio.PlayOneShot(screamerSound);
-        }
-        else if (screamerAudio != null)
-        {
-            screamerAudio.Play();
-        }
+        // Optional camera shake
+        if (playerCamera != null) StartCoroutine(CameraShake());
 
-        // Disable game audio
-        if (playerAudioListener != null)
-        {
-            playerAudioListener.enabled = false;
-        }
-
-        // Optional: Add camera shake
-        if (playerCamera != null)
-        {
-            StartCoroutine(CameraShake());
-        }
-
-        // Start fade to black
+        // Fade to black over time
         if (fadeToBlack != null)
         {
             fadeToBlack.gameObject.SetActive(true);
@@ -172,24 +134,24 @@ public class PlayerDeathScreener : MonoBehaviour
 
     void Update()
     {
-        if (isDead)
-        {
-            deathTimer += Time.deltaTime;
+        if (!isDead) return;
 
-            if (deathTimer >= deathDuration)
-            {
-                // Load game over or restart
-                if (reloadCurrentScene)
-                {
-                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-                }
-                else if (!string.IsNullOrEmpty(gameOverSceneName))
-                {
-                    SceneManager.LoadScene(gameOverSceneName);
-                }
-            }
+        deathTimer += Time.deltaTime;
+
+        // Safety fallback: if video finished earlier, you can hook into
+        // screamerVideoPlayer.loopPointReached instead of using a timer.
+        if (deathTimer >= deathDuration)
+        {
+            if (reloadCurrentScene)
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            else if (!string.IsNullOrEmpty(gameOverSceneName))
+                SceneManager.LoadScene(gameOverSceneName);
         }
     }
+
+    /* ───────────────────────────────────────────────────────────── */
+    /* HELPERS                                                      */
+    /* ───────────────────────────────────────────────────────────── */
 
     System.Collections.IEnumerator CameraShake()
     {
@@ -214,8 +176,8 @@ public class PlayerDeathScreener : MonoBehaviour
 
     System.Collections.IEnumerator FadeOut()
     {
-        float alpha = 0;
-        while (alpha < 1)
+        float alpha = 0f;
+        while (alpha < 1f)
         {
             alpha += Time.deltaTime * fadeSpeed;
             fadeToBlack.color = new Color(0, 0, 0, alpha);
@@ -225,10 +187,7 @@ public class PlayerDeathScreener : MonoBehaviour
 
     void OnDestroy()
     {
-        // Clean up render texture
         if (videoRenderTexture != null)
-        {
             videoRenderTexture.Release();
-        }
     }
 }

@@ -1,46 +1,14 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class SpiderAttackTrigger : MonoBehaviour
 {
-    private SpiderAI spiderAI;
-    private Animator animator;
-
-    void Start()
+    private void OnTriggerEnter(Collider other)
     {
-        // Get components from parent
-        spiderAI = GetComponentInParent<SpiderAI>();
-        animator = GetComponentInParent<Animator>();
-
-        // Ensure this trigger has proper tag
-        if (!transform.parent.CompareTag("Spider"))
+        // If the object entering the trigger is the player, switch scenes
+        if (other.CompareTag("Player"))
         {
-            transform.parent.tag = "Spider";
-        }
-    }
-
-    void OnTriggerEnter(Collider other)
-    {
-        // Check if this is the player and spider is attacking
-        if (other.CompareTag("Player") && animator != null && animator.GetBool("isAttacking"))
-        {
-            PlayerDeathScreener deathScript = other.GetComponent<PlayerDeathScreener>();
-            if (deathScript != null)
-            {
-                deathScript.TriggerDeath();
-            }
-        }
-    }
-
-    void OnTriggerStay(Collider other)
-    {
-        // Continue checking during attack animation
-        if (other.CompareTag("Player") && animator != null && animator.GetBool("isAttacking"))
-        {
-            PlayerDeathScreener deathScript = other.GetComponent<PlayerDeathScreener>();
-            if (deathScript != null && !deathScript.isDead)
-            {
-                deathScript.TriggerDeath();
-            }
+            SceneManager.LoadScene("Screamer", LoadSceneMode.Single);
         }
     }
 }

@@ -17,4 +17,9 @@ public class StartMenuController : MonoBehaviour
         UnityEditor.EditorApplication.isPlaying = false;
 #endif
     }
+    public void OnRepeatButtonClicked()
+    {
+        // Reload the start menu scene when the repeat button is clicked
+        UnityEngine.SceneManagement.SceneManager.LoadScene("StartMenu");
+    }
 }

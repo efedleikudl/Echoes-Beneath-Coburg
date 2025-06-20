@@ -7,6 +7,8 @@ public class PlaceTarget : MonoBehaviour
 
     private bool isPlaced = false;
 
+    public bool IsPlaced => isPlaced;
+
     public void TryPlace()
     {
         if (isPlaced) return;
