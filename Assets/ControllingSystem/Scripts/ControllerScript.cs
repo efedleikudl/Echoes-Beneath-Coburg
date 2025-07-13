@@ -1,10 +1,11 @@
-// PlayerController.cs – First-Person-Controller mit Sprint, Sprung, Licht und Interaktion (URP-kompatibel)
+// PlayerController.cs – First‑Person‑Controller mit Sprint, Sprung, Licht, Interaktion und einfacher Schritt-/Lauf‑Audioausgabe (URP‑kompatibel)
 using UnityEngine;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
+    #region Inspector Fields
     [Header("Bewegung")]
     public float moveSpeed = 5f;
     public float sprintSpeed = 8f;
@@ -27,6 +28,14 @@ public class PlayerController : MonoBehaviour
     [Header("UI")]
     public Image sprintBar;
 
+    [Header("Audio (Loopende Quellen)")]
+    [Tooltip("Schrittgeräusch – wird beim normalen Gehen abgespielt")]
+    public AudioSource footstepAudioSource;
+
+    [Tooltip("Laufgeräusch – wird beim Sprinten abgespielt")]
+    public AudioSource runningAudioSource;
+    #endregion
+
     private CharacterController controller;
     private float xRotation = 0f;
     private float yVelocity = 0f;
@@ -41,6 +50,10 @@ public class PlayerController : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         sprintTimer = sprintDuration;
         cooldownTimer = 0f;
+
+        // Sicherstellen, dass beide Quellen nicht spielen, wenn das Spiel startet
+        footstepAudioSource?.Stop();
+        runningAudioSource?.Stop();
     }
 
     void Update()
@@ -48,11 +61,13 @@ public class PlayerController : MonoBehaviour
         Look();
         HandleSprint();
         Move();
+        HandleAudio();   // <‑‑ NEU
         HandleLight();
         HandleInteraction();
         UpdateSprintUI();
     }
 
+    #region Kamera & Bewegung
     void Look()
     {
         float mouseX = Input.GetAxis("Mouse X") * 2f;
@@ -67,7 +82,7 @@ public class PlayerController : MonoBehaviour
 
     void HandleSprint()
     {
-        if (Input.GetKey(sprintKey) && sprintTimer > 0f && cooldownTimer <= 0f)
+        if (Input.GetKey(sprintKey) && sprintTimer > 0f && cooldownTimer <= 0f && controller.velocity.sqrMagnitude > 0.1f)
         {
             isSprinting = true;
             sprintTimer -= Time.deltaTime;
@@ -112,7 +127,55 @@ public class PlayerController : MonoBehaviour
         move.y = yVelocity;
         controller.Move(move * Time.deltaTime);
     }
+    #endregion
 
+    #region Einfaches Footstep/Runningsound‑Handling
+    /*
+     * Diese Methode schaltet die beiden loopenden AudioQuellen abhängig vom Bewegungszustand ein bzw. aus.
+     * Voraussetzungen im Inspector:
+     *  – Beide AudioSource‑Komponenten haben "Loop" aktiviert
+     *  – Es sind passende Audioclips zugewiesen (z.B. Schritte, Sprinten)
+     *  – Lautstärke/Pitch nach Bedarf einstellen
+     */
+    void HandleAudio()
+    {
+        if (controller == null) return;
+
+        // Bewegungs‑ und Zustandsprüfungen
+        bool isGrounded = controller.isGrounded;
+        // Nur horizontale Geschwindigkeit betrachten, damit Sprung‑Y‑Geschwindigkeit ignoriert wird
+        Vector3 horizontalVelocity = controller.velocity;
+        horizontalVelocity.y = 0f;
+        bool isMoving = horizontalVelocity.magnitude > 0.1f;
+
+        // Wenn der Spieler läuft oder geht
+        if (isGrounded && isMoving)
+        {
+            if (isSprinting)
+            {
+                // Sprintgeräusch aktivieren
+                runningAudioSource.enabled = true;
+                // Gehgeräusch deaktivieren
+                footstepAudioSource.enabled = false;
+            }
+            else
+            {
+                // Gehgeräusch aktivieren
+                footstepAudioSource.enabled = true;
+                // Sprintgeräusch deaktivieren
+                runningAudioSource.enabled = false;
+            }
+        }
+        else
+        {
+            // Keine Bodenberührung oder Stillstand – beides ausschalten
+            footstepAudioSource.enabled = false;
+            runningAudioSource.enabled = false;
+        }
+    }
+    #endregion
+
+    #region Licht & Interaktion
     void HandleLight()
     {
         if (Input.GetKeyDown(toggleLightKey))
@@ -122,38 +185,37 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
-void HandleInteraction()
-{
-    if (Input.GetKeyDown(interactKey))  // Standard ist KeyCode.E
+    void HandleInteraction()
     {
-        Ray ray = new Ray(cameraHolder.position, cameraHolder.forward);
-        if (Physics.Raycast(ray, out RaycastHit hit, interactRange, interactLayer))
+        if (Input.GetKeyDown(interactKey))
         {
-            if (PlayerInventory.IsCarrying)
+            Ray ray = new Ray(cameraHolder.position, cameraHolder.forward);
+            if (Physics.Raycast(ray, out RaycastHit hit, interactRange, interactLayer))
             {
-                PlaceTarget target = hit.collider.GetComponent<PlaceTarget>();
-                if (target != null)
+                if (PlayerInventory.IsCarrying)
                 {
-                    target.TryPlace();
-                    return;
+                    PlaceTarget target = hit.collider.GetComponent<PlaceTarget>();
+                    if (target != null)
+                    {
+                        target.TryPlace();
+                        return;
+                    }
                 }
-            }
-            else
-            {
-                CarryItem item = hit.collider.GetComponent<CarryItem>();
-                if (item != null)
+                else
                 {
-                    item.PickUp();
-                    return;
+                    CarryItem item = hit.collider.GetComponent<CarryItem>();
+                    if (item != null)
+                    {
+                        item.PickUp();
+                        return;
+                    }
                 }
             }
         }
     }
-}
+    #endregion
 
-
-
+    #region UI
     void UpdateSprintUI()
     {
         if (sprintBar != null)
@@ -161,54 +223,5 @@ void HandleInteraction()
             sprintBar.fillAmount = sprintTimer / sprintDuration;
         }
     }
+    #endregion
 }
-
-// Interface für interaktive Objekte
-public interface IInteractable
-{
-    void Interact();
-}
-
-
-// Beispiel: Tür, die Schlüssel benötigt
-public class LockableDoor : MonoBehaviour
-{
-    public string requiredKeyID;
-    public Transform doorPivot;
-    public float openAngle = 90f;
-    public float openSpeed = 2f;
-
-    private bool isOpen = false;
-
-
-    private System.Collections.IEnumerator OpenDoor()
-    {
-        Quaternion startRot = doorPivot.rotation;
-        Quaternion endRot = startRot * Quaternion.Euler(0, openAngle, 0);
-
-        float t = 0;
-        while (t < 1f)
-        {
-            t += Time.deltaTime * openSpeed;
-            doorPivot.rotation = Quaternion.Slerp(startRot, endRot, t);
-            yield return null;
-        }
-    }
-}
-
-
-
-// Beispiel: Kerze ein-/ausschalten
-public class CandleToggle : MonoBehaviour, IInteractable
-{
-    public GameObject flame;
-
-    public void Interact()
-    {
-        if (flame != null)
-            flame.SetActive(!flame.activeSelf);
-    }
-}
-
-    
-
